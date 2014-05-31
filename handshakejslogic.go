@@ -2,10 +2,10 @@ package handshakejslogic
 
 import (
 	"errors"
-	"fmt"
 	"github.com/dchest/uniuri"
 	"github.com/garyburd/redigo/redis"
 	"github.com/scottmotte/redisurlparser"
+	"log"
 )
 
 var (
@@ -13,29 +13,25 @@ var (
 )
 
 func Setup(redis_url string) {
-	fmt.Println(redis_url)
-
 	ru, err := redisurlparser.Parse(redis_url)
 	if err != nil {
-		fmt.Println(err)
-		//panic(err)
+		log.Fatal(err)
 	}
-	fmt.Println(ru)
 
-	//fmt.Println("adfjdkfjdkfjdkfjdkfjdkfjdkfjdkf")
-	//fmt.Println(ru)
-	//_, err = redis.Dial("tcp", ru.Host+":"+ru.Port)
-	//if err != nil {
-	//	panic(err)
-	//}
-	//if _, err := conn.Do("AUTH", ru.Password); err != nil {
-	//	conn.Close()
-	//	panic(err)
-	//}
+	conn, err = redis.Dial("tcp", ru.Host+":"+ru.Port)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if ru.Password != "" {
+		if _, err := conn.Do("AUTH", ru.Password); err != nil {
+			conn.Close()
+			log.Fatal(err)
+		}
+	}
 }
 
 func AppsCreate(app map[string]interface{}) (map[string]interface{}, error) {
-
 	generated_salt := uniuri.NewLen(20)
 	if app["salt"] == nil {
 		app["salt"] = generated_salt
@@ -50,15 +46,15 @@ func AppsCreate(app map[string]interface{}) (map[string]interface{}, error) {
 		return app, err
 	}
 
-	//err = addAppToApps(conn, app["app_name"].(string))
-	//if err != nil {
-	//	return nil, err
-	//}
+	err = addAppToApps(conn, app["app_name"].(string))
+	if err != nil {
+		return nil, err
+	}
 
-	//err = addAppToKey(conn, key, app)
-	//if err != nil {
-	//	return nil, err
-	//}
+	err = addAppToKey(conn, key, app)
+	if err != nil {
+		return nil, err
+	}
 
 	return app, nil
 }
