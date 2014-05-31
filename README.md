@@ -17,7 +17,7 @@ import (
 func main() {
   handshakejslogic.Setup("redis://127.0.0.1:6379")
 
-	app := map[string]interface{}{"email": EMAIL, "app_name": APP_NAME}
+  app := map[string]interface{}{"email": EMAIL, "app_name": APP_NAME}
   result, err := handshakejslogic.AppsCreate(app)
   if err != nil {
     fmt.Println(err)
