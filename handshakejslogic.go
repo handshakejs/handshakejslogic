@@ -6,11 +6,24 @@ import (
 	"github.com/garyburd/redigo/redis"
 	"github.com/scottmotte/redisurlparser"
 	"log"
+	"strings"
 )
 
 var (
 	conn redis.Conn
 )
+
+type App struct {
+	AppName string
+	Email   string
+	Salt    string
+}
+
+type LogicError struct {
+	Code    string
+	Field   string
+	Message string
+}
 
 func Setup(redis_url string) {
 	ru, err := redisurlparser.Parse(redis_url)
@@ -31,7 +44,19 @@ func Setup(redis_url string) {
 	}
 }
 
-func AppsCreate(app map[string]interface{}) (map[string]interface{}, error) {
+func AppsCreate(app map[string]interface{}) (map[string]interface{}, *LogicError) {
+	var app_name string
+	if str, ok := app["app_name"].(string); ok {
+		app_name = strings.Replace(str, " ", "", -1)
+	} else {
+		app_name = ""
+	}
+	if app_name == "" {
+		logic_error := &LogicError{"required", "app_name", "app_name cannot be blank"}
+		return app, logic_error
+	}
+	app["app_name"] = app_name
+
 	generated_salt := uniuri.NewLen(20)
 	if app["salt"] == nil {
 		app["salt"] = generated_salt
@@ -43,17 +68,18 @@ func AppsCreate(app map[string]interface{}) (map[string]interface{}, error) {
 	key := "apps/" + app["app_name"].(string)
 	err := checkIfAppExists(key)
 	if err != nil {
-		return app, err
+		logic_error := &LogicError{"not_unique", "app_name", "app_name must be unique"}
+		return app, logic_error
 	}
-
 	err = addAppToApps(conn, app["app_name"].(string))
 	if err != nil {
-		return nil, err
+		logic_error := &LogicError{"unkown", "", err.Error()}
+		return nil, logic_error
 	}
-
 	err = addAppToKey(conn, key, app)
 	if err != nil {
-		return nil, err
+		logic_error := &LogicError{"unkown", "", err.Error()}
+		return nil, logic_error
 	}
 
 	return app, nil

@@ -7,8 +7,8 @@ import (
 )
 
 const (
-	EMAIL     = "app0@mailinator.com"
 	APP_NAME  = "app0"
+	EMAIL     = "app0@mailinator.com"
 	SALT      = "1234"
 	REDIS_URL = "redis://127.0.0.1:11001"
 )
@@ -30,9 +30,9 @@ func TestAppsCreate(t *testing.T) {
 		app := map[string]interface{}{"email": EMAIL, "app_name": APP_NAME}
 
 		handshakejslogic.Setup(REDIS_URL)
-		result, err := handshakejslogic.AppsCreate(app)
-		if err != nil {
-			t.Errorf("Error", err)
+		result, logic_error := handshakejslogic.AppsCreate(app)
+		if logic_error != nil {
+			t.Errorf("Error", logic_error)
 		}
 		if result["email"] != EMAIL {
 			t.Errorf("Incorrect email " + result["email"].(string))
@@ -55,9 +55,9 @@ func TestAppsCreateCustomSalt(t *testing.T) {
 		app := map[string]interface{}{"email": EMAIL, "app_name": APP_NAME, "salt": SALT}
 
 		handshakejslogic.Setup(REDIS_URL)
-		result, err := handshakejslogic.AppsCreate(app)
-		if err != nil {
-			t.Errorf("Error", err)
+		result, logic_error := handshakejslogic.AppsCreate(app)
+		if logic_error != nil {
+			t.Errorf("Error", logic_error)
 		}
 
 		if result["salt"] != SALT {
@@ -75,13 +75,77 @@ func TestAppsCreateCustomBlankSalt(t *testing.T) {
 		app := map[string]interface{}{"email": EMAIL, "app_name": APP_NAME, "salt": ""}
 
 		handshakejslogic.Setup(REDIS_URL)
-		result, err := handshakejslogic.AppsCreate(app)
-		if err != nil {
-			t.Errorf("Error", err)
+		result, logic_error := handshakejslogic.AppsCreate(app)
+		if logic_error != nil {
+			t.Errorf("Error", logic_error)
 		}
 
-		if result["salt"] == "" {
+		if result["salt"] == nil || result["salt"].(string) == "" {
 			t.Errorf("It should generate a salt if blank.")
+		}
+	})
+}
+
+//func TestAppsCreateBlankAppName(t *testing.T) {
+//	tempredis.Temp(tempredisConfig(), func(err error) {
+//		if err != nil {
+//			panic(err)
+//		}
+//
+//		app := map[string]interface{}{"email": EMAIL, "app_name": ""}
+//
+//		handshakejslogic.Setup(REDIS_URL)
+//		_, logic_error := handshakejslogic.AppsCreate(app)
+//		if logic_error.Code != "required" {
+//			t.Errorf("Error", err)
+//		}
+//	})
+//}
+
+func TestAppsCreateNilAppName(t *testing.T) {
+	tempredis.Temp(tempredisConfig(), func(err error) {
+		if err != nil {
+			panic(err)
+		}
+
+		app := map[string]interface{}{"email": EMAIL}
+
+		handshakejslogic.Setup(REDIS_URL)
+		_, logic_error := handshakejslogic.AppsCreate(app)
+		if logic_error.Code != "required" {
+			t.Errorf("Error", err)
+		}
+	})
+}
+
+func TestAppsCreateSpacedAppName(t *testing.T) {
+	tempredis.Temp(tempredisConfig(), func(err error) {
+		if err != nil {
+			panic(err)
+		}
+
+		app := map[string]interface{}{"email": EMAIL, "app_name": " "}
+
+		handshakejslogic.Setup(REDIS_URL)
+		_, logic_error := handshakejslogic.AppsCreate(app)
+		if logic_error.Code != "required" {
+			t.Errorf("Error", err)
+		}
+	})
+}
+
+func TestAppsCreateAppNameWithSpaces(t *testing.T) {
+	tempredis.Temp(tempredisConfig(), func(err error) {
+		if err != nil {
+			panic(err)
+		}
+
+		app := map[string]interface{}{"email": EMAIL, "app_name": "combine these"}
+
+		handshakejslogic.Setup(REDIS_URL)
+		result, _ := handshakejslogic.AppsCreate(app)
+		if result["app_name"] != "combinethese" {
+			t.Errorf("Incorrect combining of app_name " + result["app_name"].(string))
 		}
 	})
 }
