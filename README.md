@@ -1,6 +1,6 @@
 # handshakejslogic
 
-<img src="https://raw.githubusercontent.com/handshakejs/handshakejslogic/master/handshakejslogic.gif" alt="handshakejslogic" align="right" />
+<img src="https://raw.githubusercontent.com/handshakejs/handshakejslogic/master/handshakejslogic.gif" alt="handshakejslogic" align="right" width="190" />
 
 [![BuildStatus](https://travis-ci.org/handshakejs/handshakejslogic.png?branch=master)](https://travis-ci.org/handshakejs/handshakejslogic)
 
