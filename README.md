@@ -22,8 +22,14 @@ func main() {
   if logic_error != nil {
     fmt.Println(logic_error)
   }
-
   fmt.Println(result)
+
+  identity := map[string]interface{}{"email": "identity0@mailinator.com", "app_name": APP_NAME}
+  result2, logic_error := handshakejslogic.IdentitiesCreate(app)
+  if logic_error != nil {
+    fmt.Println(logic_error)
+  }
+  fmt.Println(result2)
 }
 ```
 
