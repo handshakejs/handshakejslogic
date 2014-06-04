@@ -27,14 +27,28 @@ func main() {
     fmt.Println(logic_error)
   }
   fmt.Println(result)
+```
 
-  identity := map[string]interface{}{"email": "identity0@mailinator.com", "app_name": APP_NAME}
-  result2, logic_error := handshakejslogic.IdentitiesCreate(app)
-  if logic_error != nil {
-    fmt.Println(logic_error)
-  }
-  fmt.Println(result2)
-}
+### Setup
+
+Connects to Redis.
+
+```go
+handshakejslogic.Setup("redis://127.0.0.1.6379")
+```
+
+### AppsCreate
+
+```go
+app := map[string]interface{}{"email": EMAIL, "app_name": APP_NAME}
+result, logic_error := handshakejslogic.AppsCreate(app)
+```
+
+### IdentitiesCreate
+
+```go
+identity := map[string]interface{}{"email": "identity0@mailinator.com", "app_name": APP_NAME}
+result, logic_error := handshakejslogic.IdentitiesCreate(identity)
 ```
 
 ## Installation
