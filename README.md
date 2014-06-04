@@ -1,17 +1,12 @@
-
 # handshakejslogic
 
 <img src="https://raw.githubusercontent.com/handshakejs/handshakejslogic/master/handshakejslogic.gif" alt="handshakejslogic" align="right" />
 
-Logic for saving handshakejs data to the redis database.
-
 [![BuildStatus](https://travis-ci.org/handshakejs/handshakejslogic.png?branch=master)](https://travis-ci.org/handshakejs/handshakejslogic)
 
-## Installation
+Logic for saving handshakejs data to the redis database.
 
-```
-go get github.com/handshakejs/handshakejslogic
-```
+This library is part of the larger [Handshake.js ecosystem](https://github.com/handshakejs).
 
 ## Usage
 
@@ -40,6 +35,12 @@ func main() {
   }
   fmt.Println(result2)
 }
+```
+
+## Installation
+
+```
+go get github.com/handshakejs/handshakejslogic
 ```
 
 ## Running Tests
