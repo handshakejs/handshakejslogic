@@ -15,7 +15,7 @@ package main
 
 import (
   "fmt"
-  handshakejslogic "github.com/handshakejs/handshakejslogic"
+  "github.com/handshakejs/handshakejslogic"
 )
 
 func main() {
@@ -27,6 +27,7 @@ func main() {
     fmt.Println(logic_error)
   }
   fmt.Println(result)
+}
 ```
 
 ### Setup
