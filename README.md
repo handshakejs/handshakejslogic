@@ -1,5 +1,7 @@
 # handshakejslogic
 
+<img src="http://i.imgur.com/IlE7oAi.png" alt="handshakejslogic" align="right" />
+
 Logic for saving handshakejs data to the redis database.
 
 [![BuildStatus](https://travis-ci.org/handshakejs/handshakejslogic.png?branch=master)](https://travis-ci.org/handshakejs/handshakejslogic)
