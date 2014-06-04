@@ -1,6 +1,7 @@
-<img src="https://raw.githubusercontent.com/handshakejs/handshakejslogic/master/handshakejslogic.gif" alt="handshakejslogic" align="right" />
 
 # handshakejslogic
+
+<img src="https://raw.githubusercontent.com/handshakejs/handshakejslogic/master/handshakejslogic.gif" alt="handshakejslogic" align="right" />
 
 Logic for saving handshakejs data to the redis database.
 
