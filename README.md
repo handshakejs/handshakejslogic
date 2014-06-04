@@ -21,7 +21,7 @@ import (
 func main() {
   handshakejslogic.Setup("redis://127.0.0.1:6379")
 
-  app := map[string]interface{}{"email": EMAIL, "app_name": APP_NAME}
+  app := map[string]interface{}{"email": "email@myapp.com", "app_name": "myapp"}
   result, logic_error := handshakejslogic.AppsCreate(app)
   if logic_error != nil {
     fmt.Println(logic_error)
@@ -40,14 +40,14 @@ handshakejslogic.Setup("redis://127.0.0.1.6379")
 ### AppsCreate
 
 ```go
-app := map[string]interface{}{"email": EMAIL, "app_name": APP_NAME}
+app := map[string]interface{}{"email": "email@myapp.com", "app_name": "myapp"}
 result, logic_error := handshakejslogic.AppsCreate(app)
 ```
 
 ### IdentitiesCreate
 
 ```go
-identity := map[string]interface{}{"email": "identity0@mailinator.com", "app_name": APP_NAME}
+identity := map[string]interface{}{"email": "user@email.com", "app_name": "myapp"}
 result, logic_error := handshakejslogic.IdentitiesCreate(identity)
 ```
 
