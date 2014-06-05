@@ -19,7 +19,7 @@ import (
 )
 
 func main() {
-  handshakejslogic.Setup("redis://127.0.0.1:6379")
+  handshakejslogic.Setup("redis://127.0.0.1:6379", &handshakejslogic.Options{})
 
   app := map[string]interface{}{"email": "email@myapp.com", "app_name": "myapp"}
   result, logic_error := handshakejslogic.AppsCreate(app)
@@ -35,7 +35,8 @@ func main() {
 Connects to Redis.
 
 ```go
-handshakejslogic.Setup("redis://127.0.0.1.6379")
+options := handshakejslogic.Options{}
+handshakejslogic.Setup("redis://127.0.0.1.6379", options)
 ```
 
 ### AppsCreate
