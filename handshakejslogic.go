@@ -14,14 +14,21 @@ import (
 )
 
 const (
-	BASE_10             = "10"
-	AUTHCODE_LIFE_IN_MS = "120000"
-	AUTHCODE_LENGTH     = "4"
+	BASE_10                     = "10"
+	AUTHCODE_LIFE_IN_MS_DEFAULT = "120000"
+	AUTHCODE_LENGTH_DEFAULT     = "4"
 )
 
 var (
-	conn redis.Conn
+	conn                redis.Conn
+	AUTHCODE_LIFE_IN_MS string
+	AUTHCODE_LENGTH     string
 )
+
+type Options struct {
+	AuthcodeLifeInMs string
+	AuthcodeLength   string
+}
 
 type LogicError struct {
 	Code    string
@@ -29,7 +36,18 @@ type LogicError struct {
 	Message string
 }
 
-func Setup(redis_url string) {
+func Setup(redis_url string, options *Options) {
+	if options.AuthcodeLifeInMs == "" {
+		AUTHCODE_LIFE_IN_MS = AUTHCODE_LIFE_IN_MS_DEFAULT
+	} else {
+		AUTHCODE_LIFE_IN_MS = options.AuthcodeLifeInMs
+	}
+	if options.AuthcodeLength == "" {
+		AUTHCODE_LENGTH = AUTHCODE_LENGTH_DEFAULT
+	} else {
+		AUTHCODE_LENGTH = options.AuthcodeLength
+	}
+
 	ru, err := redisurlparser.Parse(redis_url)
 	if err != nil {
 		log.Fatal(err)
@@ -140,8 +158,22 @@ func IdentitiesConfirm(identity map[string]interface{}) (map[string]interface{},
 	}
 
 	res_authcode := r.Authcode
+	res_authcode_expired_at := r.AuthcodeExpiredAt
+
+	current_ms_epoch_time := (time.Now().Unix() * 1000)
+	res_authcode_expired_at_int64, err := strconv.ParseInt(res_authcode_expired_at, 10, 64)
+	if err != nil {
+		logic_error := &LogicError{"unknown", "", err.Error()}
+		return identity, logic_error
+	}
+
 	if len(res_authcode) > 0 && res_authcode == authcode {
-		return identity, nil
+		if res_authcode_expired_at_int64 < current_ms_epoch_time {
+			logic_error := &LogicError{"expired", "authcode", "authcode has expired. request another one."}
+			return identity, logic_error
+		} else {
+			return identity, nil
+		}
 	} else {
 		logic_error := &LogicError{"incorrect", "authcode", "the authcode was incorrect"}
 		return identity, logic_error
