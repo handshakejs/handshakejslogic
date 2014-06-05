@@ -178,8 +178,6 @@ func IdentitiesConfirm(identity map[string]interface{}) (map[string]interface{},
 		logic_error := &LogicError{"incorrect", "authcode", "the authcode was incorrect"}
 		return identity, logic_error
 	}
-
-	return identity, nil
 }
 
 func IdentitiesCreate(identity map[string]interface{}) (map[string]interface{}, *LogicError) {
