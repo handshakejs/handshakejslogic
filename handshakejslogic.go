@@ -89,27 +89,76 @@ func AppsCreate(app map[string]interface{}) (map[string]interface{}, *LogicError
 	return app, nil
 }
 
-func IdentitiesCreate(identity map[string]interface{}) (map[string]interface{}, *LogicError) {
-	var app_name string
-	if str, ok := identity["app_name"].(string); ok {
-		app_name = strings.Replace(str, " ", "", -1)
-	} else {
-		app_name = ""
-	}
-	if app_name == "" {
-		logic_error := &LogicError{"required", "app_name", "app_name cannot be blank"}
+func IdentitiesConfirm(identity map[string]interface{}) (map[string]interface{}, *LogicError) {
+	app_name, logic_error := checkAppNamePresent(identity)
+	if logic_error != nil {
 		return identity, logic_error
 	}
 	identity["app_name"] = app_name
 
-	var email string
-	if str, ok := identity["email"].(string); ok {
-		email = strings.Replace(str, " ", "", -1)
-	} else {
-		email = ""
+	email, logic_error := checkEmailPresent(identity)
+	if logic_error != nil {
+		return identity, logic_error
 	}
-	if email == "" {
-		logic_error := &LogicError{"required", "email", "email cannot be blank"}
+	identity["email"] = email
+
+	authcode, logic_error := checkAuthcodePresent(identity)
+	if logic_error != nil {
+		return identity, logic_error
+	}
+	identity["authcode"] = authcode
+
+	app_name_key := "apps/" + identity["app_name"].(string)
+	key := app_name_key + "/identities/" + identity["email"].(string)
+
+	err := validateAppExists(app_name_key)
+	if err != nil {
+		logic_error := &LogicError{"not_found", "app_name", "app_name could not be found"}
+		return identity, logic_error
+	}
+	err = validateIdentityExists(key)
+	if err != nil {
+		logic_error := &LogicError{"not_found", "email", "email could not be found"}
+		return identity, logic_error
+	}
+
+	var r struct {
+		Email             string `redis:"email"`
+		AppName           string `redis:"app_name"`
+		Authcode          string `redis:"authcode"`
+		AuthcodeExpiredAt string `redis:"authcode_expired_at"`
+	}
+	values, err := redis.Values(conn.Do("HGETALL", key))
+	if err != nil {
+		logic_error := &LogicError{"unknown", "", err.Error()}
+		return identity, logic_error
+	}
+	err = redis.ScanStruct(values, &r)
+	if err != nil {
+		logic_error := &LogicError{"unknown", "", err.Error()}
+		return identity, logic_error
+	}
+
+	res_authcode := r.Authcode
+	if len(res_authcode) > 0 && res_authcode == authcode {
+		return identity, nil
+	} else {
+		logic_error := &LogicError{"incorrect", "authcode", "the authcode was incorrect"}
+		return identity, logic_error
+	}
+
+	return identity, nil
+}
+
+func IdentitiesCreate(identity map[string]interface{}) (map[string]interface{}, *LogicError) {
+	app_name, logic_error := checkAppNamePresent(identity)
+	if logic_error != nil {
+		return identity, logic_error
+	}
+	identity["app_name"] = app_name
+
+	email, logic_error := checkEmailPresent(identity)
+	if logic_error != nil {
 		return identity, logic_error
 	}
 	identity["email"] = email
@@ -184,6 +233,18 @@ func validateAppExists(key string) error {
 	return nil
 }
 
+func validateIdentityExists(key string) error {
+	res, err := conn.Do("EXISTS", key)
+	if err != nil {
+		return err
+	}
+	if res.(int64) != 1 {
+		err = errors.New("That identity does not exist.")
+		return err
+	}
+
+	return nil
+}
 func addIdentityToIdentities(conn redis.Conn, app_name_key string, email string) error {
 	_, err := conn.Do("SADD", app_name_key+"/identities", email)
 	if err != nil {
@@ -245,4 +306,53 @@ func randomAuthCode() (string, error) {
 	}
 
 	return buffer.String(), nil
+}
+
+func checkAppNamePresent(identity map[string]interface{}) (string, *LogicError) {
+	var app_name string
+	if str, ok := identity["app_name"].(string); ok {
+		app_name = strings.Replace(str, " ", "", -1)
+	} else {
+		app_name = ""
+	}
+	if app_name == "" {
+		logic_error := &LogicError{"required", "app_name", "app_name cannot be blank"}
+		return app_name, logic_error
+	}
+
+	return app_name, nil
+}
+
+func checkEmailPresent(identity map[string]interface{}) (string, *LogicError) {
+	var email string
+	if str, ok := identity["email"].(string); ok {
+		email = strings.Replace(str, " ", "", -1)
+	} else {
+		email = ""
+	}
+	if email == "" {
+		logic_error := &LogicError{"required", "email", "email cannot be blank"}
+		return email, logic_error
+	}
+
+	return email, nil
+}
+
+func checkAuthcodePresent(identity map[string]interface{}) (string, *LogicError) {
+	var authcode string
+	if str, ok := identity["authcode"].(string); ok {
+		authcode = strings.Replace(str, " ", "", -1)
+	} else {
+		authcode = ""
+	}
+	if authcode == "" {
+		logic_error := &LogicError{"required", "authcode", "authcode cannot be blank"}
+		return authcode, logic_error
+	}
+
+	return authcode, nil
+}
+
+func Conn() redis.Conn {
+	return conn
 }

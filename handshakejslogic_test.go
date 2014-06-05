@@ -2,7 +2,9 @@ package handshakejslogic_test
 
 import (
 	"../handshakejslogic"
+	"github.com/garyburd/redigo/redis"
 	"github.com/stvp/tempredis"
+	"log"
 	"testing"
 )
 
@@ -10,6 +12,7 @@ const (
 	APP_NAME       = "app0"
 	EMAIL          = "app0@mailinator.com"
 	IDENTITY_EMAIL = "identity0@mailinator.com"
+	AUTHCODE       = "5678"
 	SALT           = "1234"
 	REDIS_URL      = "redis://127.0.0.1:11001"
 )
@@ -25,7 +28,7 @@ func tempredisConfig() tempredis.Config {
 func TestAppsCreate(t *testing.T) {
 	tempredis.Temp(tempredisConfig(), func(err error) {
 		if err != nil {
-			panic(err)
+			log.Println(err)
 		}
 
 		app := map[string]interface{}{"email": EMAIL, "app_name": APP_NAME}
@@ -50,7 +53,7 @@ func TestAppsCreate(t *testing.T) {
 func TestAppsCreateCustomSalt(t *testing.T) {
 	tempredis.Temp(tempredisConfig(), func(err error) {
 		if err != nil {
-			panic(err)
+			log.Println(err)
 		}
 
 		app := map[string]interface{}{"email": EMAIL, "app_name": APP_NAME, "salt": SALT}
@@ -70,7 +73,7 @@ func TestAppsCreateCustomSalt(t *testing.T) {
 func TestAppsCreateCustomBlankSalt(t *testing.T) {
 	tempredis.Temp(tempredisConfig(), func(err error) {
 		if err != nil {
-			panic(err)
+			log.Println(err)
 		}
 
 		app := map[string]interface{}{"email": EMAIL, "app_name": APP_NAME, "salt": ""}
@@ -90,7 +93,7 @@ func TestAppsCreateCustomBlankSalt(t *testing.T) {
 func TestAppsCreateBlankAppName(t *testing.T) {
 	tempredis.Temp(tempredisConfig(), func(err error) {
 		if err != nil {
-			panic(err)
+			log.Println(err)
 		}
 
 		app := map[string]interface{}{"email": EMAIL, "app_name": ""}
@@ -106,7 +109,7 @@ func TestAppsCreateBlankAppName(t *testing.T) {
 func TestAppsCreateNilAppName(t *testing.T) {
 	tempredis.Temp(tempredisConfig(), func(err error) {
 		if err != nil {
-			panic(err)
+			log.Println(err)
 		}
 
 		app := map[string]interface{}{"email": EMAIL}
@@ -122,7 +125,7 @@ func TestAppsCreateNilAppName(t *testing.T) {
 func TestAppsCreateSpacedAppName(t *testing.T) {
 	tempredis.Temp(tempredisConfig(), func(err error) {
 		if err != nil {
-			panic(err)
+			log.Println(err)
 		}
 
 		app := map[string]interface{}{"email": EMAIL, "app_name": " "}
@@ -138,7 +141,7 @@ func TestAppsCreateSpacedAppName(t *testing.T) {
 func TestAppsCreateAppNameWithSpaces(t *testing.T) {
 	tempredis.Temp(tempredisConfig(), func(err error) {
 		if err != nil {
-			panic(err)
+			log.Println(err)
 		}
 
 		app := map[string]interface{}{"email": EMAIL, "app_name": "combine these"}
@@ -154,7 +157,7 @@ func TestAppsCreateAppNameWithSpaces(t *testing.T) {
 func TestIdentitiesCreate(t *testing.T) {
 	tempredis.Temp(tempredisConfig(), func(err error) {
 		if err != nil {
-			panic(err)
+			log.Println(err)
 		}
 		setupApp(t)
 
@@ -175,7 +178,7 @@ func TestIdentitiesCreate(t *testing.T) {
 func TestIdentitiesCreateBlankAppName(t *testing.T) {
 	tempredis.Temp(tempredisConfig(), func(err error) {
 		if err != nil {
-			panic(err)
+			log.Println(err)
 		}
 		setupApp(t)
 
@@ -193,7 +196,7 @@ func TestIdentitiesCreateBlankAppName(t *testing.T) {
 func TestIdentitiesCreateNilAppName(t *testing.T) {
 	tempredis.Temp(tempredisConfig(), func(err error) {
 		if err != nil {
-			panic(err)
+			log.Println(err)
 		}
 		setupApp(t)
 
@@ -211,7 +214,7 @@ func TestIdentitiesCreateNilAppName(t *testing.T) {
 func TestIdentitiesCreateNonExistingAppName(t *testing.T) {
 	tempredis.Temp(tempredisConfig(), func(err error) {
 		if err != nil {
-			panic(err)
+			log.Println(err)
 		}
 		setupApp(t)
 
@@ -228,7 +231,7 @@ func TestIdentitiesCreateNonExistingAppName(t *testing.T) {
 func TestIdentitiesCreateBlankEmail(t *testing.T) {
 	tempredis.Temp(tempredisConfig(), func(err error) {
 		if err != nil {
-			panic(err)
+			log.Println(err)
 		}
 		setupApp(t)
 
@@ -246,7 +249,7 @@ func TestIdentitiesCreateBlankEmail(t *testing.T) {
 func TestIdentitiesCreateNilEmail(t *testing.T) {
 	tempredis.Temp(tempredisConfig(), func(err error) {
 		if err != nil {
-			panic(err)
+			log.Println(err)
 		}
 		setupApp(t)
 
@@ -261,6 +264,182 @@ func TestIdentitiesCreateNilEmail(t *testing.T) {
 	})
 }
 
+func TestIdentitiesConfirm(t *testing.T) {
+	tempredis.Temp(tempredisConfig(), func(err error) {
+		if err != nil {
+			log.Println(err)
+		}
+		authcode := setupIdentity(t)
+
+		identity_check := map[string]interface{}{"app_name": APP_NAME, "email": IDENTITY_EMAIL, "authcode": authcode}
+		_, logic_error := handshakejslogic.IdentitiesConfirm(identity_check)
+		if logic_error != nil {
+			t.Errorf("Error", logic_error)
+		}
+	})
+}
+
+func TestIdentitiesConfirmIncorrectAuthcode(t *testing.T) {
+	tempredis.Temp(tempredisConfig(), func(err error) {
+		if err != nil {
+			log.Println(err)
+		}
+		setupIdentity(t)
+
+		identity_check := map[string]interface{}{"app_name": APP_NAME, "email": IDENTITY_EMAIL, "authcode": "1234"}
+		_, logic_error := handshakejslogic.IdentitiesConfirm(identity_check)
+		if logic_error.Code != "incorrect" {
+			t.Errorf("Error", logic_error)
+		}
+		if logic_error.Field != "authcode" {
+			t.Errorf("Error", logic_error)
+		}
+	})
+}
+
+func TestIdentitiesConfirmBlankAppName(t *testing.T) {
+	tempredis.Temp(tempredisConfig(), func(err error) {
+		if err != nil {
+			log.Println(err)
+		}
+		setupIdentity(t)
+
+		identity_check := map[string]interface{}{"app_name": "", "email": IDENTITY_EMAIL, "authcode": AUTHCODE}
+		_, logic_error := handshakejslogic.IdentitiesConfirm(identity_check)
+		if logic_error.Code != "required" {
+			t.Errorf("Error", logic_error)
+		}
+		if logic_error.Field != "app_name" {
+			t.Errorf("Error", logic_error)
+		}
+	})
+}
+
+func TestIdentitiesConfirmNilAppName(t *testing.T) {
+	tempredis.Temp(tempredisConfig(), func(err error) {
+		if err != nil {
+			log.Println(err)
+		}
+		setupIdentity(t)
+
+		identity_check := map[string]interface{}{"email": IDENTITY_EMAIL, "authcode": AUTHCODE}
+		_, logic_error := handshakejslogic.IdentitiesConfirm(identity_check)
+		if logic_error.Code != "required" {
+			t.Errorf("Error", logic_error)
+		}
+		if logic_error.Field != "app_name" {
+			t.Errorf("Error", logic_error)
+		}
+	})
+}
+
+func TestIdentitiesConfirmNonExistingAppName(t *testing.T) {
+	tempredis.Temp(tempredisConfig(), func(err error) {
+		if err != nil {
+			log.Println(err)
+		}
+		setupIdentity(t)
+
+		identity_check := map[string]interface{}{"app_name": "doesnotexist", "email": IDENTITY_EMAIL, "authcode": AUTHCODE}
+		_, logic_error := handshakejslogic.IdentitiesConfirm(identity_check)
+		if logic_error.Code != "not_found" {
+			t.Errorf("Error", logic_error)
+		}
+		if logic_error.Field != "app_name" {
+			t.Errorf("Error", logic_error)
+		}
+	})
+}
+
+func TestIdentitiesConfirmBlankEmail(t *testing.T) {
+	tempredis.Temp(tempredisConfig(), func(err error) {
+		if err != nil {
+			log.Println(err)
+		}
+		setupIdentity(t)
+
+		identity_check := map[string]interface{}{"app_name": APP_NAME, "email": "", "authcode": AUTHCODE}
+		_, logic_error := handshakejslogic.IdentitiesConfirm(identity_check)
+		if logic_error.Code != "required" {
+			t.Errorf("Error", logic_error)
+		}
+		if logic_error.Field != "email" {
+			t.Errorf("Error", logic_error)
+		}
+	})
+}
+
+func TestIdentitiesConfirmNilEmail(t *testing.T) {
+	tempredis.Temp(tempredisConfig(), func(err error) {
+		if err != nil {
+			log.Println(err)
+		}
+		setupIdentity(t)
+
+		identity_check := map[string]interface{}{"app_name": APP_NAME, "authcode": AUTHCODE}
+		_, logic_error := handshakejslogic.IdentitiesConfirm(identity_check)
+		if logic_error.Code != "required" {
+			t.Errorf("Error", logic_error)
+		}
+		if logic_error.Field != "email" {
+			t.Errorf("Error", logic_error)
+		}
+	})
+}
+
+func TestIdentitiesConfirmBlankAuthcode(t *testing.T) {
+	tempredis.Temp(tempredisConfig(), func(err error) {
+		if err != nil {
+			log.Println(err)
+		}
+		setupIdentity(t)
+
+		identity_check := map[string]interface{}{"app_name": APP_NAME, "email": EMAIL, "authcode": ""}
+		_, logic_error := handshakejslogic.IdentitiesConfirm(identity_check)
+		if logic_error.Code != "required" {
+			t.Errorf("Error", logic_error)
+		}
+		if logic_error.Field != "authcode" {
+			t.Errorf("Error", logic_error)
+		}
+	})
+}
+
+func TestIdentitiesConfirmNilAuthcode(t *testing.T) {
+	tempredis.Temp(tempredisConfig(), func(err error) {
+		if err != nil {
+			log.Println(err)
+		}
+		setupIdentity(t)
+
+		identity_check := map[string]interface{}{"app_name": APP_NAME, "email": EMAIL}
+		_, logic_error := handshakejslogic.IdentitiesConfirm(identity_check)
+		if logic_error.Code != "required" {
+			t.Errorf("Error", logic_error)
+		}
+		if logic_error.Field != "authcode" {
+			t.Errorf("Error", logic_error)
+		}
+	})
+}
+
+func TestIdentitiesConfirmNonExistingEmail(t *testing.T) {
+	tempredis.Temp(tempredisConfig(), func(err error) {
+		if err != nil {
+			log.Println(err)
+		}
+		setupIdentity(t)
+
+		identity_check := map[string]interface{}{"app_name": APP_NAME, "email": "doenot@existe.com", "authcode": AUTHCODE}
+		_, logic_error := handshakejslogic.IdentitiesConfirm(identity_check)
+		if logic_error.Code != "not_found" {
+			t.Errorf("Error", logic_error)
+		}
+		if logic_error.Field != "email" {
+			t.Errorf("Error", logic_error)
+		}
+	})
+}
 func setupApp(t *testing.T) {
 	app := map[string]interface{}{"email": EMAIL, "app_name": APP_NAME}
 
@@ -269,5 +448,23 @@ func setupApp(t *testing.T) {
 	if logic_error != nil {
 		t.Errorf("Error", logic_error)
 	}
+}
 
+func setupIdentity(t *testing.T) string {
+	setupApp(t)
+
+	identity := map[string]interface{}{"app_name": APP_NAME, "email": IDENTITY_EMAIL}
+	_, logic_error := handshakejslogic.IdentitiesCreate(identity)
+	if logic_error != nil {
+		t.Errorf("Error", logic_error)
+	}
+
+	app_name_key := "apps/" + identity["app_name"].(string)
+	key := app_name_key + "/identities/" + identity["email"].(string)
+	authcode, err := redis.String(handshakejslogic.Conn().Do("HGET", key, "authcode"))
+	if err != nil {
+		t.Errorf("Error", err)
+	}
+
+	return authcode
 }
