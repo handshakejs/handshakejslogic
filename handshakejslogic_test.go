@@ -273,9 +273,12 @@ func TestIdentitiesConfirm(t *testing.T) {
 		authcode := setupIdentity(t)
 
 		identity_check := map[string]interface{}{"app_name": APP_NAME, "email": IDENTITY_EMAIL, "authcode": authcode}
-		_, logic_error := handshakejslogic.IdentitiesConfirm(identity_check)
+		result, logic_error := handshakejslogic.IdentitiesConfirm(identity_check)
 		if logic_error != nil {
 			t.Errorf("Error", logic_error)
+		}
+		if result["hash"].(string) == "" {
+			t.Errorf("Error", "missing hash in result")
 		}
 	})
 }

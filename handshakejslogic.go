@@ -2,6 +2,9 @@ package handshakejslogic
 
 import (
 	"bytes"
+	"code.google.com/p/go.crypto/pbkdf2"
+	"crypto/sha1"
+	"encoding/hex"
 	"errors"
 	"github.com/dchest/uniuri"
 	"github.com/garyburd/redigo/redis"
@@ -157,6 +160,7 @@ func IdentitiesConfirm(identity map[string]interface{}) (map[string]interface{},
 		return identity, logic_error
 	}
 
+	email = r.Email
 	res_authcode := r.Authcode
 	res_authcode_expired_at := r.AuthcodeExpiredAt
 
@@ -171,9 +175,17 @@ func IdentitiesConfirm(identity map[string]interface{}) (map[string]interface{},
 		if res_authcode_expired_at_int64 < current_ms_epoch_time {
 			logic_error := &LogicError{"expired", "authcode", "authcode has expired. request another one."}
 			return identity, logic_error
-		} else {
-			return identity, nil
 		}
+
+		app_salt, err := redis.String(conn.Do("HGET", app_name_key, "salt"))
+		if err != nil {
+			logic_error := &LogicError{"unknown", "", err.Error()}
+			return identity, logic_error
+		}
+		hash := pbkdf2.Key([]byte(email), []byte(app_salt), 1000, 16, sha1.New)
+		identity["hash"] = hex.EncodeToString(hash)
+
+		return identity, nil
 	} else {
 		logic_error := &LogicError{"incorrect", "authcode", "the authcode was incorrect"}
 		return identity, logic_error
