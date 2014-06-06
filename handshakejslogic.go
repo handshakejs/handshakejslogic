@@ -263,14 +263,11 @@ func validateAppDoesNotExist(key string) error {
 }
 
 func validateAppExists(key string) error {
-	res, err := conn.Do("EXISTS", key)
-	log.Println(key)
-	log.Println(res)
-
+	exists, err := redis.Bool(conn.Do("EXISTS", key))
 	if err != nil {
 		return err
 	}
-	if res.(int64) != 1 {
+	if !exists {
 		err = errors.New("That app_name does not exist.")
 		return err
 	}
