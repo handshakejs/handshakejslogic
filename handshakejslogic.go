@@ -264,6 +264,9 @@ func validateAppDoesNotExist(key string) error {
 
 func validateAppExists(key string) error {
 	res, err := conn.Do("EXISTS", key)
+	log.Println(key)
+	log.Println(res)
+
 	if err != nil {
 		return err
 	}
