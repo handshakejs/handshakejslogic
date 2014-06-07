@@ -20,7 +20,7 @@ const (
 	BASE_10                           = "10"
 	AUTHCODE_LIFE_IN_MS_DEFAULT       = "120000"
 	AUTHCODE_LENGTH_DEFAULT           = "4"
-	KEY_EXPIRATION_IN_SECONDS_DEFAULT = "240"
+	KEY_EXPIRATION_IN_SECONDS_DEFAULT = "86400" // 24 hours in seconds
 )
 
 var (
