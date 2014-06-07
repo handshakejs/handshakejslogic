@@ -486,7 +486,7 @@ func setupAppWithShortAuthcodeLife(t *testing.T) {
 	app := map[string]interface{}{"email": EMAIL, "app_name": APP_NAME}
 
 	// set it negative for test purposes
-	options := &handshakejslogic.Options{"-5", "5"}
+	options := &handshakejslogic.Options{"-5", "5", "240"}
 	handshakejslogic.Setup(REDIS_URL, options)
 	_, logic_error := handshakejslogic.AppsCreate(app)
 	if logic_error != nil {

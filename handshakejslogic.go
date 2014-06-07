@@ -17,20 +17,23 @@ import (
 )
 
 const (
-	BASE_10                     = "10"
-	AUTHCODE_LIFE_IN_MS_DEFAULT = "120000"
-	AUTHCODE_LENGTH_DEFAULT     = "4"
+	BASE_10                           = "10"
+	AUTHCODE_LIFE_IN_MS_DEFAULT       = "120000"
+	AUTHCODE_LENGTH_DEFAULT           = "4"
+	KEY_EXPIRATION_IN_SECONDS_DEFAULT = "240"
 )
 
 var (
-	conn                redis.Conn
-	AUTHCODE_LIFE_IN_MS string
-	AUTHCODE_LENGTH     string
+	conn                      redis.Conn
+	AUTHCODE_LIFE_IN_MS       string
+	AUTHCODE_LENGTH           string
+	KEY_EXPIRATION_IN_SECONDS string
 )
 
 type Options struct {
-	AuthcodeLifeInMs string
-	AuthcodeLength   string
+	AuthcodeLifeInMs       string
+	AuthcodeLength         string
+	KeyExpirationInSeconds string
 }
 
 type LogicError struct {
@@ -49,6 +52,11 @@ func Setup(redis_url string, options *Options) {
 		AUTHCODE_LENGTH = AUTHCODE_LENGTH_DEFAULT
 	} else {
 		AUTHCODE_LENGTH = options.AuthcodeLength
+	}
+	if options.KeyExpirationInSeconds == "" {
+		KEY_EXPIRATION_IN_SECONDS = KEY_EXPIRATION_IN_SECONDS_DEFAULT
+	} else {
+		KEY_EXPIRATION_IN_SECONDS = options.KeyExpirationInSeconds
 	}
 
 	ru, err := redisurlparser.Parse(redis_url)
@@ -96,12 +104,12 @@ func AppsCreate(app map[string]interface{}) (map[string]interface{}, *LogicError
 		logic_error := &LogicError{"not_unique", "app_name", "app_name must be unique"}
 		return app, logic_error
 	}
-	err = addAppToApps(conn, app["app_name"].(string))
+	err = addAppToApps(app["app_name"].(string))
 	if err != nil {
 		logic_error := &LogicError{"unknown", "", err.Error()}
 		return nil, logic_error
 	}
-	err = saveApp(conn, key, app)
+	err = saveApp(key, app)
 	if err != nil {
 		logic_error := &LogicError{"unknown", "", err.Error()}
 		return nil, logic_error
@@ -213,12 +221,12 @@ func IdentitiesCreate(identity map[string]interface{}) (map[string]interface{}, 
 		logic_error := &LogicError{"not_found", "app_name", "app_name could not be found"}
 		return identity, logic_error
 	}
-	err = addIdentityToIdentities(conn, app_name_key, identity["email"].(string))
+	err = addIdentityToIdentities(app_name_key, identity["email"].(string))
 	if err != nil {
 		logic_error := &LogicError{"unknown", "", err.Error()}
 		return identity, logic_error
 	}
-	err = saveIdentity(conn, key, identity)
+	err = saveIdentity(key, identity)
 	if err != nil {
 		logic_error := &LogicError{"unknown", "", err.Error()}
 		return nil, logic_error
@@ -227,7 +235,7 @@ func IdentitiesCreate(identity map[string]interface{}) (map[string]interface{}, 
 	return identity, nil
 }
 
-func saveApp(conn redis.Conn, key string, app map[string]interface{}) error {
+func saveApp(key string, app map[string]interface{}) error {
 	args := []interface{}{key}
 	for k, v := range app {
 		args = append(args, k, v)
@@ -240,7 +248,7 @@ func saveApp(conn redis.Conn, key string, app map[string]interface{}) error {
 	return nil
 }
 
-func addAppToApps(conn redis.Conn, app_name string) error {
+func addAppToApps(app_name string) error {
 	_, err := conn.Do("SADD", "apps", app_name)
 	if err != nil {
 		return err
@@ -287,7 +295,7 @@ func validateIdentityExists(key string) error {
 
 	return nil
 }
-func addIdentityToIdentities(conn redis.Conn, app_name_key string, email string) error {
+func addIdentityToIdentities(app_name_key string, email string) error {
 	_, err := conn.Do("SADD", app_name_key+"/identities", email)
 	if err != nil {
 		return err
@@ -296,7 +304,7 @@ func addIdentityToIdentities(conn redis.Conn, app_name_key string, email string)
 	return nil
 }
 
-func saveIdentity(conn redis.Conn, key string, identity map[string]interface{}) error {
+func saveIdentity(key string, identity map[string]interface{}) error {
 	base_10, err := strconv.Atoi(BASE_10)
 	if err != nil {
 		return err
@@ -321,6 +329,10 @@ func saveIdentity(conn redis.Conn, key string, identity map[string]interface{}) 
 		args = append(args, k, v)
 	}
 	_, err = conn.Do("HMSET", args...)
+	if err != nil {
+		return err
+	}
+	_, err = conn.Do("EXPIRE", key, KEY_EXPIRATION_IN_SECONDS)
 	if err != nil {
 		return err
 	}
