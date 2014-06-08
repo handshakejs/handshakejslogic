@@ -17,23 +17,29 @@ import (
 )
 
 const (
-	BASE_10                           = "10"
-	AUTHCODE_LIFE_IN_MS_DEFAULT       = "120000"
-	AUTHCODE_LENGTH_DEFAULT           = "4"
-	KEY_EXPIRATION_IN_SECONDS_DEFAULT = "86400" // 24 hours in seconds
+	BASE_10                           = 10
+	AUTHCODE_LIFE_IN_MS_DEFAULT       = 120000
+	AUTHCODE_LENGTH_DEFAULT           = 4
+	KEY_EXPIRATION_IN_SECONDS_DEFAULT = 86400 // 24 hours in seconds
+	PBKDF2_HASH_ITERATIONS_DEFAULT    = 1000
+	PBKDF2_HASH_BITES_DEFAULT         = 16
 )
 
 var (
 	conn                      redis.Conn
-	AUTHCODE_LIFE_IN_MS       string
-	AUTHCODE_LENGTH           string
-	KEY_EXPIRATION_IN_SECONDS string
+	AUTHCODE_LIFE_IN_MS       int64
+	AUTHCODE_LENGTH           int
+	KEY_EXPIRATION_IN_SECONDS int
+	PBKDF2_HASH_ITERATIONS    int
+	PBKDF2_HASH_BITES         int
 )
 
 type Options struct {
-	AuthcodeLifeInMs       string
-	AuthcodeLength         string
-	KeyExpirationInSeconds string
+	AuthcodeLifeInMs       int64
+	AuthcodeLength         int
+	KeyExpirationInSeconds int
+	Pbkdf2HashIterations   int
+	Pbkdf2HashBites        int
 }
 
 type LogicError struct {
@@ -43,20 +49,30 @@ type LogicError struct {
 }
 
 func Setup(redis_url string, options Options) {
-	if options.AuthcodeLifeInMs == "" {
+	if options.AuthcodeLifeInMs == 0 {
 		AUTHCODE_LIFE_IN_MS = AUTHCODE_LIFE_IN_MS_DEFAULT
 	} else {
 		AUTHCODE_LIFE_IN_MS = options.AuthcodeLifeInMs
 	}
-	if options.AuthcodeLength == "" {
+	if options.AuthcodeLength == 0 {
 		AUTHCODE_LENGTH = AUTHCODE_LENGTH_DEFAULT
 	} else {
 		AUTHCODE_LENGTH = options.AuthcodeLength
 	}
-	if options.KeyExpirationInSeconds == "" {
+	if options.KeyExpirationInSeconds == 0 {
 		KEY_EXPIRATION_IN_SECONDS = KEY_EXPIRATION_IN_SECONDS_DEFAULT
 	} else {
 		KEY_EXPIRATION_IN_SECONDS = options.KeyExpirationInSeconds
+	}
+	if options.Pbkdf2HashIterations == 0 {
+		PBKDF2_HASH_ITERATIONS = PBKDF2_HASH_ITERATIONS_DEFAULT
+	} else {
+		PBKDF2_HASH_ITERATIONS = options.Pbkdf2HashIterations
+	}
+	if options.Pbkdf2HashBites == 0 {
+		PBKDF2_HASH_BITES = PBKDF2_HASH_BITES_DEFAULT
+	} else {
+		PBKDF2_HASH_BITES = options.Pbkdf2HashBites
 	}
 
 	ru, err := redisurlparser.Parse(redis_url)
@@ -190,7 +206,7 @@ func IdentitiesConfirm(identity map[string]interface{}) (map[string]interface{},
 			logic_error := &LogicError{"unknown", "", err.Error()}
 			return identity, logic_error
 		}
-		hash := pbkdf2.Key([]byte(email), []byte(app_salt), 1000, 16, sha1.New)
+		hash := pbkdf2.Key([]byte(email), []byte(app_salt), PBKDF2_HASH_ITERATIONS, PBKDF2_HASH_BITES, sha1.New)
 		identity["hash"] = hex.EncodeToString(hash)
 
 		return identity, nil
@@ -305,24 +321,14 @@ func addIdentityToIdentities(app_name_key string, email string) error {
 }
 
 func saveIdentity(key string, identity map[string]interface{}) error {
-	base_10, err := strconv.Atoi(BASE_10)
-	if err != nil {
-		return err
-	}
-
-	authcode_life_in_ms, err := strconv.Atoi(AUTHCODE_LIFE_IN_MS)
-	if err != nil {
-		return err
-	}
-
 	rand.Seed(time.Now().UnixNano())
 	authcode, err := randomAuthCode()
 	if err != nil {
 		return err
 	}
 	identity["authcode"] = authcode
-	unixtime := (time.Now().Unix() * 1000) + int64(authcode_life_in_ms)
-	identity["authcode_expired_at"] = strconv.FormatInt(unixtime, base_10)
+	unixtime := (time.Now().Unix() * 1000) + AUTHCODE_LIFE_IN_MS
+	identity["authcode_expired_at"] = strconv.FormatInt(unixtime, BASE_10)
 
 	args := []interface{}{key}
 	for k, v := range identity {
@@ -341,21 +347,12 @@ func saveIdentity(key string, identity map[string]interface{}) error {
 }
 
 func randomAuthCode() (string, error) {
-	base_10, err := strconv.Atoi(BASE_10)
-	if err != nil {
-		return "", err
-	}
-	authcode_length, err := strconv.Atoi(AUTHCODE_LENGTH)
-	if err != nil {
-		return "", err
-	}
-
 	rand.Seed(time.Now().UnixNano())
 	var buffer bytes.Buffer
 
-	for i := 1; i <= authcode_length; i++ {
+	for i := 1; i <= AUTHCODE_LENGTH; i++ {
 		random_number := int64(rand.Intn(10))
-		number_as_string := strconv.FormatInt(random_number, base_10)
+		number_as_string := strconv.FormatInt(random_number, BASE_10)
 		buffer.WriteString(number_as_string)
 	}
 
