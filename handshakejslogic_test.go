@@ -33,7 +33,7 @@ func TestAppsCreate(t *testing.T) {
 
 		app := map[string]interface{}{"email": EMAIL, "app_name": APP_NAME}
 
-		handshakejslogic.Setup(REDIS_URL, &handshakejslogic.Options{})
+		handshakejslogic.Setup(REDIS_URL, handshakejslogic.Options{})
 		result, logic_error := handshakejslogic.AppsCreate(app)
 		if logic_error != nil {
 			t.Errorf("Error", logic_error)
@@ -58,7 +58,8 @@ func TestAppsCreateCustomSalt(t *testing.T) {
 
 		app := map[string]interface{}{"email": EMAIL, "app_name": APP_NAME, "salt": SALT}
 
-		handshakejslogic.Setup(REDIS_URL, &handshakejslogic.Options{})
+		options := handshakejslogic.Options{}
+		handshakejslogic.Setup(REDIS_URL, options)
 		result, logic_error := handshakejslogic.AppsCreate(app)
 		if logic_error != nil {
 			t.Errorf("Error", logic_error)
@@ -78,7 +79,7 @@ func TestAppsCreateCustomBlankSalt(t *testing.T) {
 
 		app := map[string]interface{}{"email": EMAIL, "app_name": APP_NAME, "salt": ""}
 
-		handshakejslogic.Setup(REDIS_URL, &handshakejslogic.Options{})
+		handshakejslogic.Setup(REDIS_URL, handshakejslogic.Options{})
 		result, logic_error := handshakejslogic.AppsCreate(app)
 		if logic_error != nil {
 			t.Errorf("Error", logic_error)
@@ -98,7 +99,7 @@ func TestAppsCreateBlankAppName(t *testing.T) {
 
 		app := map[string]interface{}{"email": EMAIL, "app_name": ""}
 
-		handshakejslogic.Setup(REDIS_URL, &handshakejslogic.Options{})
+		handshakejslogic.Setup(REDIS_URL, handshakejslogic.Options{})
 		_, logic_error := handshakejslogic.AppsCreate(app)
 		if logic_error.Code != "required" {
 			t.Errorf("Error", err)
@@ -114,7 +115,7 @@ func TestAppsCreateNilAppName(t *testing.T) {
 
 		app := map[string]interface{}{"email": EMAIL}
 
-		handshakejslogic.Setup(REDIS_URL, &handshakejslogic.Options{})
+		handshakejslogic.Setup(REDIS_URL, handshakejslogic.Options{})
 		_, logic_error := handshakejslogic.AppsCreate(app)
 		if logic_error.Code != "required" {
 			t.Errorf("Error", err)
@@ -130,7 +131,7 @@ func TestAppsCreateSpacedAppName(t *testing.T) {
 
 		app := map[string]interface{}{"email": EMAIL, "app_name": " "}
 
-		handshakejslogic.Setup(REDIS_URL, &handshakejslogic.Options{})
+		handshakejslogic.Setup(REDIS_URL, handshakejslogic.Options{})
 		_, logic_error := handshakejslogic.AppsCreate(app)
 		if logic_error.Code != "required" {
 			t.Errorf("Error", err)
@@ -146,7 +147,7 @@ func TestAppsCreateAppNameWithSpaces(t *testing.T) {
 
 		app := map[string]interface{}{"email": EMAIL, "app_name": "combine these"}
 
-		handshakejslogic.Setup(REDIS_URL, &handshakejslogic.Options{})
+		handshakejslogic.Setup(REDIS_URL, handshakejslogic.Options{})
 		result, _ := handshakejslogic.AppsCreate(app)
 		if result["app_name"] != "combinethese" {
 			t.Errorf("Incorrect combining of app_name " + result["app_name"].(string))
@@ -475,7 +476,7 @@ func TestIdentitiesConfirmNonExistingEmail(t *testing.T) {
 func setupApp(t *testing.T) {
 	app := map[string]interface{}{"email": EMAIL, "app_name": APP_NAME}
 
-	handshakejslogic.Setup(REDIS_URL, &handshakejslogic.Options{})
+	handshakejslogic.Setup(REDIS_URL, handshakejslogic.Options{})
 	_, logic_error := handshakejslogic.AppsCreate(app)
 	if logic_error != nil {
 		t.Errorf("Error", logic_error)
@@ -486,7 +487,7 @@ func setupAppWithShortAuthcodeLife(t *testing.T) {
 	app := map[string]interface{}{"email": EMAIL, "app_name": APP_NAME}
 
 	// set it negative for test purposes
-	options := &handshakejslogic.Options{"-5", "5", "240"}
+	options := handshakejslogic.Options{AuthcodeLifeInMs: "-5", AuthcodeLength: "5"}
 	handshakejslogic.Setup(REDIS_URL, options)
 	_, logic_error := handshakejslogic.AppsCreate(app)
 	if logic_error != nil {

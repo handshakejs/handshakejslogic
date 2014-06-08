@@ -42,7 +42,7 @@ type LogicError struct {
 	Message string
 }
 
-func Setup(redis_url string, options *Options) {
+func Setup(redis_url string, options Options) {
 	if options.AuthcodeLifeInMs == "" {
 		AUTHCODE_LIFE_IN_MS = AUTHCODE_LIFE_IN_MS_DEFAULT
 	} else {
