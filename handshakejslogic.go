@@ -23,13 +23,10 @@ const (
 	KEY_EXPIRATION_IN_SECONDS_DEFAULT = 86400 // 24 hours in seconds
 	PBKDF2_HASH_ITERATIONS_DEFAULT    = 1000
 	PBKDF2_HASH_BITES_DEFAULT         = 16
-	DB_ENCRYPTION_ITERATIONS          = 1000
-	DB_ENCRYPTION_BITES               = 16
 )
 
 var (
 	conn                      redis.Conn
-	DB_ENCRYPTION_SALT        string
 	AUTHCODE_LIFE_IN_MS       int64
 	AUTHCODE_LENGTH           int
 	KEY_EXPIRATION_IN_SECONDS int
@@ -38,7 +35,6 @@ var (
 )
 
 type Options struct {
-	DbEncryptionSalt       string
 	AuthcodeLifeInMs       int64
 	AuthcodeLength         int
 	KeyExpirationInSeconds int
@@ -53,11 +49,6 @@ type LogicError struct {
 }
 
 func Setup(redis_url string, options Options) {
-	if options.DbEncryptionSalt == "" {
-		log.Fatal("You must specify DbEncryptionSalt for security reasons")
-	} else {
-		DB_ENCRYPTION_SALT = options.DbEncryptionSalt
-	}
 	if options.AuthcodeLifeInMs == 0 {
 		AUTHCODE_LIFE_IN_MS = AUTHCODE_LIFE_IN_MS_DEFAULT
 	} else {
@@ -417,17 +408,3 @@ func checkAuthcodePresent(identity map[string]interface{}) (string, *LogicError)
 func Conn() redis.Conn {
 	return conn
 }
-
-func encryptSaltToDb(app_to_save map[string]interface{}) map[string]interface{} {
-	pbkdf2ified_salt := pbkdf2.Key([]byte(app_to_save["salt"].(string)), []byte(DB_ENCRYPTION_SALT), DB_ENCRYPTION_ITERATIONS, DB_ENCRYPTION_BITES, sha1.New)
-	app_to_save["salt"] = hex.EncodeToString(pbkdf2ified_salt)
-
-	return app_to_save
-}
-
-//func decryptSaltFromDb(app_to_save map[string]interface{}) map[string]interface{} {
-//	pbkdf2ified_salt := pbkdf2.Key([]byte(app_to_save["salt"].(string)), []byte(DB_ENCRYPTION_SALT), DB_ENCRYPTION_ITERATIONS, DB_ENCRYPTION_BITES, sha1.New)
-//	app_to_save["salt"] = hex.EncodeToString(pbkdf2ified_salt)
-//
-//	return app_to_save
-//}
