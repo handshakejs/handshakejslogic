@@ -15,7 +15,7 @@ const (
 	AUTHCODE           = "5678"
 	SALT               = "1234"
 	REDIS_URL          = "redis://127.0.0.1:11001"
-	DB_ENCRYPTION_SALT = "somesecretsalt"
+	DB_ENCRYPTION_SALT = "somesecretsaltthatis32characters"
 )
 
 func defaultOptions() handshakejslogic.Options {

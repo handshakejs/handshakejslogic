@@ -8,6 +8,7 @@ import (
 	"errors"
 	"github.com/dchest/uniuri"
 	"github.com/garyburd/redigo/redis"
+	"github.com/handshakejs/handshakejscrypter"
 	"github.com/scottmotte/redisurlparser"
 	"log"
 	"math/rand"
@@ -83,6 +84,8 @@ func Setup(redis_url string, options Options) {
 	} else {
 		PBKDF2_HASH_BITES = options.Pbkdf2HashBites
 	}
+
+	handshakejscrypter.Setup(DB_ENCRYPTION_SALT)
 
 	ru, err := redisurlparser.Parse(redis_url)
 	if err != nil {
@@ -215,6 +218,7 @@ func IdentitiesConfirm(identity map[string]interface{}) (map[string]interface{},
 			logic_error := &LogicError{"unknown", "", err.Error()}
 			return identity, logic_error
 		}
+		app_salt = decrypt(app_salt)
 
 		hash := pbkdf2.Key([]byte(email), []byte(app_salt), PBKDF2_HASH_ITERATIONS, PBKDF2_HASH_BITES, sha1.New)
 		identity["hash"] = hex.EncodeToString(hash)
@@ -262,8 +266,15 @@ func IdentitiesCreate(identity map[string]interface{}) (map[string]interface{}, 
 }
 
 func saveApp(key string, app map[string]interface{}) error {
-	args := []interface{}{key}
+	app_to_save := make(map[string]interface{})
 	for k, v := range app {
+		app_to_save[k] = v
+	}
+
+	app_to_save["salt"] = encrypt(app_to_save["salt"].(string))
+
+	args := []interface{}{key}
+	for k, v := range app_to_save {
 		args = append(args, k, v)
 	}
 	_, err := conn.Do("HMSET", args...)
@@ -418,16 +429,10 @@ func Conn() redis.Conn {
 	return conn
 }
 
-func encryptSaltToDb(app_to_save map[string]interface{}) map[string]interface{} {
-	pbkdf2ified_salt := pbkdf2.Key([]byte(app_to_save["salt"].(string)), []byte(DB_ENCRYPTION_SALT), DB_ENCRYPTION_ITERATIONS, DB_ENCRYPTION_BITES, sha1.New)
-	app_to_save["salt"] = hex.EncodeToString(pbkdf2ified_salt)
-
-	return app_to_save
+func encrypt(text string) string {
+	return handshakejscrypter.Encrypt(text)
 }
 
-//func decryptSaltFromDb(app_to_save map[string]interface{}) map[string]interface{} {
-//	pbkdf2ified_salt := pbkdf2.Key([]byte(app_to_save["salt"].(string)), []byte(DB_ENCRYPTION_SALT), DB_ENCRYPTION_ITERATIONS, DB_ENCRYPTION_BITES, sha1.New)
-//	app_to_save["salt"] = hex.EncodeToString(pbkdf2ified_salt)
-//
-//	return app_to_save
-//}
+func decrypt(text string) string {
+	return handshakejscrypter.Decrypt(text)
+}
