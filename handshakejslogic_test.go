@@ -9,16 +9,17 @@ import (
 )
 
 const (
-	APP_NAME       = "app0"
-	EMAIL          = "app0@mailinator.com"
-	IDENTITY_EMAIL = "identity0@mailinator.com"
-	AUTHCODE       = "5678"
-	SALT           = "1234"
-	REDIS_URL      = "redis://127.0.0.1:11001"
+	APP_NAME           = "app0"
+	EMAIL              = "app0@mailinator.com"
+	IDENTITY_EMAIL     = "identity0@mailinator.com"
+	AUTHCODE           = "5678"
+	SALT               = "1234"
+	REDIS_URL          = "redis://127.0.0.1:11001"
+	DB_ENCRYPTION_SALT = "somesecretsalt"
 )
 
 func defaultOptions() handshakejslogic.Options {
-	value := handshakejslogic.Options{}
+	value := handshakejslogic.Options{DbEncryptionSalt: DB_ENCRYPTION_SALT}
 	return value
 }
 
@@ -495,7 +496,7 @@ func setupAppWithShortAuthcodeLife(t *testing.T) {
 	app := map[string]interface{}{"email": EMAIL, "app_name": APP_NAME}
 
 	// set it negative for test purposes
-	options := handshakejslogic.Options{AuthcodeLifeInMs: -5, AuthcodeLength: 5}
+	options := handshakejslogic.Options{DbEncryptionSalt: DB_ENCRYPTION_SALT, AuthcodeLifeInMs: -5, AuthcodeLength: 5}
 	handshakejslogic.Setup(REDIS_URL, options)
 	_, logic_error := handshakejslogic.AppsCreate(app)
 	if logic_error != nil {
