@@ -84,6 +84,9 @@ func Setup(redis_url string, options Options) {
 	} else {
 		PBKDF2_HASH_BITES = options.Pbkdf2HashBites
 	}
+	if len(DB_ENCRYPTION_SALT) != 32 {
+		log.Fatal("DbEncryptionSalt size must be 32 bits long")
+	}
 
 	handshakejscrypter.Setup(DB_ENCRYPTION_SALT)
 
