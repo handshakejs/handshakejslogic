@@ -9,13 +9,19 @@ import (
 )
 
 const (
-	APP_NAME       = "app0"
-	EMAIL          = "app0@mailinator.com"
-	IDENTITY_EMAIL = "identity0@mailinator.com"
-	AUTHCODE       = "5678"
-	SALT           = "1234"
-	REDIS_URL      = "redis://127.0.0.1:11001"
+	APP_NAME           = "app0"
+	EMAIL              = "app0@mailinator.com"
+	IDENTITY_EMAIL     = "identity0@mailinator.com"
+	AUTHCODE           = "5678"
+	SALT               = "1234"
+	REDIS_URL          = "redis://127.0.0.1:11001"
+	DB_ENCRYPTION_SALT = "somesecretsalt"
 )
+
+func defaultOptions() handshakejslogic.Options {
+	value := handshakejslogic.Options{DbEncryptionSalt: DB_ENCRYPTION_SALT}
+	return value
+}
 
 func tempredisConfig() tempredis.Config {
 	config := tempredis.Config{
@@ -33,7 +39,7 @@ func TestAppsCreate(t *testing.T) {
 
 		app := map[string]interface{}{"email": EMAIL, "app_name": APP_NAME}
 
-		handshakejslogic.Setup(REDIS_URL, handshakejslogic.Options{})
+		handshakejslogic.Setup(REDIS_URL, defaultOptions())
 		result, logic_error := handshakejslogic.AppsCreate(app)
 		if logic_error != nil {
 			t.Errorf("Error", logic_error)
@@ -58,7 +64,7 @@ func TestAppsCreateCustomSalt(t *testing.T) {
 
 		app := map[string]interface{}{"email": EMAIL, "app_name": APP_NAME, "salt": SALT}
 
-		options := handshakejslogic.Options{}
+		options := defaultOptions()
 		handshakejslogic.Setup(REDIS_URL, options)
 		result, logic_error := handshakejslogic.AppsCreate(app)
 		if logic_error != nil {
@@ -79,7 +85,7 @@ func TestAppsCreateCustomBlankSalt(t *testing.T) {
 
 		app := map[string]interface{}{"email": EMAIL, "app_name": APP_NAME, "salt": ""}
 
-		handshakejslogic.Setup(REDIS_URL, handshakejslogic.Options{})
+		handshakejslogic.Setup(REDIS_URL, defaultOptions())
 		result, logic_error := handshakejslogic.AppsCreate(app)
 		if logic_error != nil {
 			t.Errorf("Error", logic_error)
@@ -99,7 +105,7 @@ func TestAppsCreateBlankAppName(t *testing.T) {
 
 		app := map[string]interface{}{"email": EMAIL, "app_name": ""}
 
-		handshakejslogic.Setup(REDIS_URL, handshakejslogic.Options{})
+		handshakejslogic.Setup(REDIS_URL, defaultOptions())
 		_, logic_error := handshakejslogic.AppsCreate(app)
 		if logic_error.Code != "required" {
 			t.Errorf("Error", err)
@@ -115,7 +121,7 @@ func TestAppsCreateNilAppName(t *testing.T) {
 
 		app := map[string]interface{}{"email": EMAIL}
 
-		handshakejslogic.Setup(REDIS_URL, handshakejslogic.Options{})
+		handshakejslogic.Setup(REDIS_URL, defaultOptions())
 		_, logic_error := handshakejslogic.AppsCreate(app)
 		if logic_error.Code != "required" {
 			t.Errorf("Error", err)
@@ -131,7 +137,7 @@ func TestAppsCreateSpacedAppName(t *testing.T) {
 
 		app := map[string]interface{}{"email": EMAIL, "app_name": " "}
 
-		handshakejslogic.Setup(REDIS_URL, handshakejslogic.Options{})
+		handshakejslogic.Setup(REDIS_URL, defaultOptions())
 		_, logic_error := handshakejslogic.AppsCreate(app)
 		if logic_error.Code != "required" {
 			t.Errorf("Error", err)
@@ -147,7 +153,7 @@ func TestAppsCreateAppNameWithSpaces(t *testing.T) {
 
 		app := map[string]interface{}{"email": EMAIL, "app_name": "combine these"}
 
-		handshakejslogic.Setup(REDIS_URL, handshakejslogic.Options{})
+		handshakejslogic.Setup(REDIS_URL, defaultOptions())
 		result, _ := handshakejslogic.AppsCreate(app)
 		if result["app_name"] != "combinethese" {
 			t.Errorf("Incorrect combining of app_name " + result["app_name"].(string))
@@ -280,6 +286,9 @@ func TestIdentitiesConfirm(t *testing.T) {
 		}
 		if result["hash"].(string) == "" {
 			t.Errorf("Error", "missing hash in result")
+		}
+		if result["hash"].(string) != "2402d6b6008c2cd1a3c73db00d8bac8a" {
+			t.Errorf("Error", result["hash"].(string)+" is the incorrect hash")
 		}
 	})
 }
@@ -474,9 +483,9 @@ func TestIdentitiesConfirmNonExistingEmail(t *testing.T) {
 }
 
 func setupApp(t *testing.T) {
-	app := map[string]interface{}{"email": EMAIL, "app_name": APP_NAME}
+	app := map[string]interface{}{"email": EMAIL, "app_name": APP_NAME, "salt": SALT}
 
-	handshakejslogic.Setup(REDIS_URL, handshakejslogic.Options{})
+	handshakejslogic.Setup(REDIS_URL, defaultOptions())
 	_, logic_error := handshakejslogic.AppsCreate(app)
 	if logic_error != nil {
 		t.Errorf("Error", logic_error)
@@ -487,7 +496,7 @@ func setupAppWithShortAuthcodeLife(t *testing.T) {
 	app := map[string]interface{}{"email": EMAIL, "app_name": APP_NAME}
 
 	// set it negative for test purposes
-	options := handshakejslogic.Options{AuthcodeLifeInMs: -5, AuthcodeLength: 5}
+	options := handshakejslogic.Options{DbEncryptionSalt: DB_ENCRYPTION_SALT, AuthcodeLifeInMs: -5, AuthcodeLength: 5}
 	handshakejslogic.Setup(REDIS_URL, options)
 	_, logic_error := handshakejslogic.AppsCreate(app)
 	if logic_error != nil {
