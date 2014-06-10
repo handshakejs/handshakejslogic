@@ -9,6 +9,7 @@ import (
 	"github.com/dchest/uniuri"
 	"github.com/garyburd/redigo/redis"
 	"github.com/handshakejs/handshakejscrypter"
+	"github.com/handshakejs/handshakejserrors"
 	"github.com/scottmotte/redisurlparser"
 	"log"
 	"math/rand"
@@ -45,12 +46,6 @@ type Options struct {
 	KeyExpirationInSeconds int
 	Pbkdf2HashIterations   int
 	Pbkdf2HashBites        int
-}
-
-type LogicError struct {
-	Code    string
-	Field   string
-	Message string
 }
 
 func Setup(redis_url string, options Options) {
@@ -108,7 +103,7 @@ func Setup(redis_url string, options Options) {
 	}
 }
 
-func AppsCreate(app map[string]interface{}) (map[string]interface{}, *LogicError) {
+func AppsCreate(app map[string]interface{}) (map[string]interface{}, *handshakejserrors.LogicError) {
 	var app_name string
 	if str, ok := app["app_name"].(string); ok {
 		app_name = strings.Replace(str, " ", "", -1)
@@ -116,7 +111,7 @@ func AppsCreate(app map[string]interface{}) (map[string]interface{}, *LogicError
 		app_name = ""
 	}
 	if app_name == "" {
-		logic_error := &LogicError{"required", "app_name", "app_name cannot be blank"}
+		logic_error := &handshakejserrors.LogicError{"required", "app_name", "app_name cannot be blank"}
 		return app, logic_error
 	}
 	app["app_name"] = app_name
@@ -132,24 +127,24 @@ func AppsCreate(app map[string]interface{}) (map[string]interface{}, *LogicError
 	key := "apps/" + app["app_name"].(string)
 	err := validateAppDoesNotExist(key)
 	if err != nil {
-		logic_error := &LogicError{"not_unique", "app_name", "app_name must be unique"}
+		logic_error := &handshakejserrors.LogicError{"not_unique", "app_name", "app_name must be unique"}
 		return app, logic_error
 	}
 	err = addAppToApps(app["app_name"].(string))
 	if err != nil {
-		logic_error := &LogicError{"unknown", "", err.Error()}
+		logic_error := &handshakejserrors.LogicError{"unknown", "", err.Error()}
 		return nil, logic_error
 	}
 	err = saveApp(key, app)
 	if err != nil {
-		logic_error := &LogicError{"unknown", "", err.Error()}
+		logic_error := &handshakejserrors.LogicError{"unknown", "", err.Error()}
 		return nil, logic_error
 	}
 
 	return app, nil
 }
 
-func IdentitiesConfirm(identity map[string]interface{}) (map[string]interface{}, *LogicError) {
+func IdentitiesConfirm(identity map[string]interface{}) (map[string]interface{}, *handshakejserrors.LogicError) {
 	app_name, logic_error := checkAppNamePresent(identity)
 	if logic_error != nil {
 		return identity, logic_error
@@ -173,12 +168,12 @@ func IdentitiesConfirm(identity map[string]interface{}) (map[string]interface{},
 
 	err := validateAppExists(app_name_key)
 	if err != nil {
-		logic_error := &LogicError{"not_found", "app_name", "app_name could not be found"}
+		logic_error := &handshakejserrors.LogicError{"not_found", "app_name", "app_name could not be found"}
 		return identity, logic_error
 	}
 	err = validateIdentityExists(key)
 	if err != nil {
-		logic_error := &LogicError{"not_found", "email", "email could not be found"}
+		logic_error := &handshakejserrors.LogicError{"not_found", "email", "email could not be found"}
 		return identity, logic_error
 	}
 
@@ -190,12 +185,12 @@ func IdentitiesConfirm(identity map[string]interface{}) (map[string]interface{},
 	}
 	values, err := redis.Values(conn.Do("HGETALL", key))
 	if err != nil {
-		logic_error := &LogicError{"unknown", "", err.Error()}
+		logic_error := &handshakejserrors.LogicError{"unknown", "", err.Error()}
 		return identity, logic_error
 	}
 	err = redis.ScanStruct(values, &r)
 	if err != nil {
-		logic_error := &LogicError{"unknown", "", err.Error()}
+		logic_error := &handshakejserrors.LogicError{"unknown", "", err.Error()}
 		return identity, logic_error
 	}
 
@@ -206,19 +201,19 @@ func IdentitiesConfirm(identity map[string]interface{}) (map[string]interface{},
 	current_ms_epoch_time := (time.Now().Unix() * 1000)
 	res_authcode_expired_at_int64, err := strconv.ParseInt(res_authcode_expired_at, 10, 64)
 	if err != nil {
-		logic_error := &LogicError{"unknown", "", err.Error()}
+		logic_error := &handshakejserrors.LogicError{"unknown", "", err.Error()}
 		return identity, logic_error
 	}
 
 	if len(res_authcode) > 0 && res_authcode == authcode {
 		if res_authcode_expired_at_int64 < current_ms_epoch_time {
-			logic_error := &LogicError{"expired", "authcode", "authcode has expired. request another one."}
+			logic_error := &handshakejserrors.LogicError{"expired", "authcode", "authcode has expired. request another one."}
 			return identity, logic_error
 		}
 
 		app_salt, err := redis.String(conn.Do("HGET", app_name_key, "salt"))
 		if err != nil {
-			logic_error := &LogicError{"unknown", "", err.Error()}
+			logic_error := &handshakejserrors.LogicError{"unknown", "", err.Error()}
 			return identity, logic_error
 		}
 		app_salt = decrypt(app_salt)
@@ -228,12 +223,12 @@ func IdentitiesConfirm(identity map[string]interface{}) (map[string]interface{},
 
 		return identity, nil
 	} else {
-		logic_error := &LogicError{"incorrect", "authcode", "the authcode was incorrect"}
+		logic_error := &handshakejserrors.LogicError{"incorrect", "authcode", "the authcode was incorrect"}
 		return identity, logic_error
 	}
 }
 
-func IdentitiesCreate(identity map[string]interface{}) (map[string]interface{}, *LogicError) {
+func IdentitiesCreate(identity map[string]interface{}) (map[string]interface{}, *handshakejserrors.LogicError) {
 	app_name, logic_error := checkAppNamePresent(identity)
 	if logic_error != nil {
 		return identity, logic_error
@@ -251,17 +246,17 @@ func IdentitiesCreate(identity map[string]interface{}) (map[string]interface{}, 
 
 	err := validateAppExists(app_name_key)
 	if err != nil {
-		logic_error := &LogicError{"not_found", "app_name", "app_name could not be found"}
+		logic_error := &handshakejserrors.LogicError{"not_found", "app_name", "app_name could not be found"}
 		return identity, logic_error
 	}
 	err = addIdentityToIdentities(app_name_key, identity["email"].(string))
 	if err != nil {
-		logic_error := &LogicError{"unknown", "", err.Error()}
+		logic_error := &handshakejserrors.LogicError{"unknown", "", err.Error()}
 		return identity, logic_error
 	}
 	err = saveIdentity(key, identity)
 	if err != nil {
-		logic_error := &LogicError{"unknown", "", err.Error()}
+		logic_error := &handshakejserrors.LogicError{"unknown", "", err.Error()}
 		return nil, logic_error
 	}
 
@@ -383,7 +378,7 @@ func randomAuthCode() (string, error) {
 	return buffer.String(), nil
 }
 
-func checkAppNamePresent(identity map[string]interface{}) (string, *LogicError) {
+func checkAppNamePresent(identity map[string]interface{}) (string, *handshakejserrors.LogicError) {
 	var app_name string
 	if str, ok := identity["app_name"].(string); ok {
 		app_name = strings.Replace(str, " ", "", -1)
@@ -391,14 +386,14 @@ func checkAppNamePresent(identity map[string]interface{}) (string, *LogicError) 
 		app_name = ""
 	}
 	if app_name == "" {
-		logic_error := &LogicError{"required", "app_name", "app_name cannot be blank"}
+		logic_error := &handshakejserrors.LogicError{"required", "app_name", "app_name cannot be blank"}
 		return app_name, logic_error
 	}
 
 	return app_name, nil
 }
 
-func checkEmailPresent(identity map[string]interface{}) (string, *LogicError) {
+func checkEmailPresent(identity map[string]interface{}) (string, *handshakejserrors.LogicError) {
 	var email string
 	if str, ok := identity["email"].(string); ok {
 		email = strings.Replace(str, " ", "", -1)
@@ -406,14 +401,14 @@ func checkEmailPresent(identity map[string]interface{}) (string, *LogicError) {
 		email = ""
 	}
 	if email == "" {
-		logic_error := &LogicError{"required", "email", "email cannot be blank"}
+		logic_error := &handshakejserrors.LogicError{"required", "email", "email cannot be blank"}
 		return email, logic_error
 	}
 
 	return email, nil
 }
 
-func checkAuthcodePresent(identity map[string]interface{}) (string, *LogicError) {
+func checkAuthcodePresent(identity map[string]interface{}) (string, *handshakejserrors.LogicError) {
 	var authcode string
 	if str, ok := identity["authcode"].(string); ok {
 		authcode = strings.Replace(str, " ", "", -1)
@@ -421,7 +416,7 @@ func checkAuthcodePresent(identity map[string]interface{}) (string, *LogicError)
 		authcode = ""
 	}
 	if authcode == "" {
-		logic_error := &LogicError{"required", "authcode", "authcode cannot be blank"}
+		logic_error := &handshakejserrors.LogicError{"required", "authcode", "authcode cannot be blank"}
 		return authcode, logic_error
 	}
 
