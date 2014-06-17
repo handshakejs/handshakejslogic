@@ -293,11 +293,12 @@ func addAppToApps(app_name string) error {
 }
 
 func validateAppDoesNotExist(key string) error {
-	res, err := conn.Do("EXISTS", key)
+	exists, err := redis.Bool(conn.Do("EXISTS", key))
 	if err != nil {
+		log.Printf("ERROR " + err.Error())
 		return err
 	}
-	if res.(int64) == 1 {
+	if exists == true {
 		err = errors.New("That app_name already exists.")
 		return err
 	}
@@ -308,6 +309,7 @@ func validateAppDoesNotExist(key string) error {
 func validateAppExists(key string) error {
 	exists, err := redis.Bool(conn.Do("EXISTS", key))
 	if err != nil {
+		log.Printf("ERROR " + err.Error())
 		return err
 	}
 	if !exists {
@@ -321,6 +323,7 @@ func validateAppExists(key string) error {
 func validateIdentityExists(key string) error {
 	res, err := conn.Do("EXISTS", key)
 	if err != nil {
+		log.Printf("ERROR " + err.Error())
 		return err
 	}
 	if res.(int64) != 1 {
@@ -333,6 +336,7 @@ func validateIdentityExists(key string) error {
 func addIdentityToIdentities(app_name_key string, email string) error {
 	_, err := conn.Do("SADD", app_name_key+"/identities", email)
 	if err != nil {
+		log.Printf("ERROR " + err.Error())
 		return err
 	}
 
@@ -343,6 +347,7 @@ func saveIdentity(key string, identity map[string]interface{}) error {
 	rand.Seed(time.Now().UnixNano())
 	authcode, err := randomAuthCode()
 	if err != nil {
+		log.Printf("ERROR " + err.Error())
 		return err
 	}
 	identity["authcode"] = authcode
@@ -355,10 +360,12 @@ func saveIdentity(key string, identity map[string]interface{}) error {
 	}
 	_, err = conn.Do("HMSET", args...)
 	if err != nil {
+		log.Printf("ERROR " + err.Error())
 		return err
 	}
 	_, err = conn.Do("EXPIRE", key, KEY_EXPIRATION_IN_SECONDS)
 	if err != nil {
+		log.Printf("ERROR " + err.Error())
 		return err
 	}
 
