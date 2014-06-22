@@ -207,6 +207,7 @@ func IdentitiesConfirm(identity map[string]interface{}) (map[string]interface{},
 	}
 
 	conn := Conn()
+	defer conn.Close()
 	values, err := redis.Values(conn.Do("HGETALL", key))
 	if err != nil {
 		logic_error := &handshakejserrors.LogicError{"unknown", "", err.Error()}
@@ -300,6 +301,7 @@ func saveApp(key string, app map[string]interface{}) error {
 		args = append(args, k, v)
 	}
 	conn := Conn()
+	defer conn.Close()
 	_, err := conn.Do("HMSET", args...)
 	if err != nil {
 		return err
@@ -310,6 +312,7 @@ func saveApp(key string, app map[string]interface{}) error {
 
 func addAppToApps(app_name string) error {
 	conn := Conn()
+	defer conn.Close()
 	_, err := conn.Do("SADD", "apps", app_name)
 	if err != nil {
 		return err
@@ -320,6 +323,7 @@ func addAppToApps(app_name string) error {
 
 func validateAppDoesNotExist(key string) error {
 	conn := Conn()
+	defer conn.Close()
 	exists, err := redis.Bool(conn.Do("EXISTS", key))
 	if err != nil {
 		log.Printf("ERROR " + err.Error())
@@ -335,6 +339,7 @@ func validateAppDoesNotExist(key string) error {
 
 func validateAppExists(key string) error {
 	conn := Conn()
+	defer conn.Close()
 	exists, err := redis.Bool(conn.Do("EXISTS", key))
 	if err != nil {
 		log.Printf("ERROR " + err.Error())
@@ -350,6 +355,7 @@ func validateAppExists(key string) error {
 
 func validateIdentityExists(key string) error {
 	conn := Conn()
+	defer conn.Close()
 	res, err := conn.Do("EXISTS", key)
 	if err != nil {
 		log.Printf("ERROR " + err.Error())
@@ -364,6 +370,7 @@ func validateIdentityExists(key string) error {
 }
 func addIdentityToIdentities(app_name_key string, email string) error {
 	conn := Conn()
+	defer conn.Close()
 	_, err := conn.Do("SADD", app_name_key+"/identities", email)
 	if err != nil {
 		log.Printf("ERROR " + err.Error())
@@ -389,6 +396,7 @@ func saveIdentity(key string, identity map[string]interface{}) error {
 		args = append(args, k, v)
 	}
 	conn := Conn()
+	defer conn.Close()
 	_, err = conn.Do("HMSET", args...)
 	if err != nil {
 		log.Printf("ERROR " + err.Error())
